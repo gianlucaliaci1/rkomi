@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Morea Hub PRO</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+body { font-family: 'Inter', sans-serif; }
+.hidden { display:none; }
+</style>
+</head>
+
+<body class="bg-gray-100 text-gray-900" id="body">
+
+<!-- SIDEBAR -->
+<div class="fixed left-0 top-0 h-full w-64 bg-gray-900 text-white p-5">
+<h1 class="text-2xl font-bold mb-8">Morea Hub</h1>
+
+<button onclick="show('dashboard')" class="block mb-3">Dashboard</button>
+<button onclick="show('ordini')" class="block mb-3">Ordini</button>
+<button onclick="show('clienti')" class="block mb-3">Clienti</button>
+<button onclick="show('audio')" class="block mb-3">Audio</button>
+
+<hr class="my-6">
+
+<button onclick="toggleDark()" class="text-sm">🌙 Dark Mode</button>
+</div>
+
+<!-- MAIN -->
+<div class="ml-64 p-6">
+
+<!-- DASHBOARD -->
+<div id="dashboard">
+<h2 class="text-3xl font-bold mb-6">Dashboard</h2>
+
+<div class="grid grid-cols-3 gap-4">
+
+<div class="bg-white p-4 rounded shadow">
+<p class="text-gray-500">Ordini Totali</p>
+<h3 id="totOrdini" class="text-2xl font-bold">0</h3>
+</div>
+
+<div class="bg-white p-4 rounded shadow">
+<p class="text-gray-500">Clienti</p>
+<h3 id="totClienti" class="text-2xl font-bold">0</h3>
+</div>
+
+<div class="bg-white p-4 rounded shadow">
+<p class="text-gray-500">Fatturato</p>
+<h3 id="fatturato" class="text-2xl font-bold">€0</h3>
+</div>
+
+</div>
+</div>
+
+<!-- ORDINI -->
+<div id="ordini" class="hidden">
+<h2 class="text-2xl font-bold mb-4">Ordini</h2>
+
+<div class="mb-4">
+<input id="clienteOrdine" placeholder="Cliente" class="border p-2 mr-2">
+<input id="prodotto" placeholder="Prodotto" class="border p-2 mr-2">
+<input id="prezzo" placeholder="Prezzo" class="border p-2 mr-2">
+
+<button onclick="addOrder()" class="bg-blue-600 text-white px-4 py-2">Aggiungi</button>
+</div>
+
+<input oninput="searchOrders()" id="search" placeholder="Cerca..." class="border p-2 mb-4 w-full">
+
+<table class="w-full bg-white rounded shadow">
+<thead>
+<tr>
+<th>ID</th>
+<th>Cliente</th>
+<th>Prodotto</th>
+<th>Prezzo</th>
+<th>Azioni</th>
+</tr>
+</thead>
+
+<tbody id="ordersList"></tbody>
+</table>
+</div>
+
+<!-- CLIENTI -->
+<div id="clienti" class="hidden">
+<h2 class="text-2xl font-bold mb-4">Clienti</h2>
+
+<input id="nomeCliente" placeholder="Nome cliente" class="border p-2 mr-2">
+<button onclick="addCliente()" class="bg-green-600 text-white px-4 py-2">Aggiungi</button>
+
+<ul id="listaClienti" class="mt-4"></ul>
+</div>
+
+<!-- AUDIO -->
+<div id="audio" class="hidden">
+<h2 class="text-2xl font-bold mb-4">Audio</h2>
+
+<audio id="player" src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"></audio>
+
+<button onclick="play()" class="bg-green-500 text-white px-4 py-2">Play</button>
+<button onclick="pause()" class="bg-red-500 text-white px-4 py-2">Pause</button>
+</div>
+
+</div>
+
+<script>
+
+// STORAGE
+let orders = JSON.parse(localStorage.getItem("orders")) || []
+let clienti = JSON.parse(localStorage.getItem("clienti")) || []
+
+// NAV
+function show(section){
+["dashboard","ordini","clienti","audio"].forEach(id=>{
+document.getElementById(id).classList.add("hidden")
+})
+document.getElementById(section).classList.remove("hidden")
+}
+
+// DARK MODE
+function toggleDark(){
+document.body.classList.toggle("bg-gray-900")
+document.body.classList.toggle("text-white")
+}
+
+// CLIENTI
+function addCliente(){
+let nome = document.getElementById("nomeCliente").value
+if(!nome) return
+
+clienti.push(nome)
+localStorage.setItem("clienti", JSON.stringify(clienti))
+renderClienti()
+}
+
+function renderClienti(){
+let html=""
+clienti.forEach(c=>{
+html += `<li class="bg-white p-2 mb-2 rounded">${c}</li>`
+})
+document.getElementById("listaClienti").innerHTML = html
+}
+
+// ORDINI
+function addOrder(){
+let cliente = document.getElementById("clienteOrdine").value
+let prodotto = document.getElementById("prodotto").value
+let prezzo = document.getElementById("prezzo").value
+
+if(!cliente || !prodotto || !prezzo) return alert("Compila tutto")
+
+let ordine = {
+id: Date.now(),
+cliente,
+prodotto,
+prezzo: parseFloat(prezzo)
+}
+
+orders.push(ordine)
+localStorage.setItem("orders", JSON.stringify(orders))
+
+renderOrders()
+updateDashboard()
+}
+
+function renderOrders(list = orders){
+let html=""
+list.forEach(o=>{
+html += `
+<tr>
+<td>${o.id}</td>
+<td>${o.cliente}</td>
+<td>${o.prodotto}</td>
+<td>€ ${o.prezzo}</td>
+<td><button onclick="deleteOrder(${o.id})">❌</button></td>
+</tr>`
+})
+document.getElementById("ordersList").innerHTML = html
+}
+
+function deleteOrder(id){
+orders = orders.filter(o=>o.id !== id)
+localStorage.setItem("orders", JSON.stringify(orders))
+renderOrders()
+updateDashboard()
+}
+
+// SEARCH
+function searchOrders(){
+let q = document.getElementById("search").value.toLowerCase()
+let filtered = orders.filter(o =>
+o.cliente.toLowerCase().includes(q) ||
+o.prodotto.toLowerCase().includes(q)
+)
+renderOrders(filtered)
+}
+
+// DASHBOARD
+function updateDashboard(){
+document.getElementById("totOrdini").innerText = orders.length
+document.getElementById("totClienti").innerText = clienti.length
+
+let totale = orders.reduce((sum,o)=>sum+o.prezzo,0)
+document.getElementById("fatturato").innerText = "€"+totale
+}
+
+// AUDIO
+function play(){ document.getElementById("player").play() }
+function pause(){ document.getElementById("player").pause() }
+
+// INIT
+renderOrders()
+renderClienti()
+updateDashboard()
+
+</script>
+
+</body>
+</html>
